@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Proyecto: artefactos regenerables
+data/vectorstore/*
+!data/vectorstore/.gitkeep
+# Cache de la API (regenerable con scripts/init_db.py)
+data/raw/
+.venv/
+*.building
