@@ -1,0 +1,8 @@
+# Versiones a fijar al implementar (pip freeze)
+google-genai
+python-dotenv
+chromadb
+sentence-transformers
+pypdf
+streamlit
+pytest
