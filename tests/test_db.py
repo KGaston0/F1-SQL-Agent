@@ -1,4 +1,4 @@
-"""Pruebas de la base de datos de F1. Requieren haber ejecutado `python scripts/init_db.py`."""
+"""Tests for the F1 database. They require `python scripts/init_db.py` to have been run (or the shipped f1.db)."""
 import sqlite3
 
 import pytest
@@ -6,9 +6,7 @@ import pytest
 from src import config
 from src.database.connection import SQLNotAllowed, connect_readonly, execute_select
 
-pytestmark = pytest.mark.skipif(not config.DB_PATH.exists(), reason="Primero ejecutá scripts/init_db.py")
-
-CORE_TABLES = ["circuits", "constructors", "drivers", "races", "results", "seasons", "status"]
+pytestmark = pytest.mark.skipif(not config.DB_PATH.exists(), reason="Run scripts/init_db.py first")
 
 
 @pytest.fixture(scope="module")
@@ -23,17 +21,17 @@ def _tables(db):
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
 
 
-def test_al_menos_5_tablas(db):
+def test_at_least_5_tables(db):
     assert len(_tables(db)) >= 5
 
 
-def test_cada_tabla_tiene_mas_de_15_registros(db):
+def test_every_table_has_more_than_15_rows(db):
     for t in _tables(db):
         n = db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-        assert n > 15, f"{t} tiene solo {n} filas"
+        assert n > 15, f"{t} has only {n} rows"
 
 
-def test_sin_violaciones_de_claves_foraneas():
+def test_no_foreign_key_violations():
     conn = sqlite3.connect(config.DB_PATH)
     try:
         assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -41,8 +39,8 @@ def test_sin_violaciones_de_claves_foraneas():
         conn.close()
 
 
-def test_datos_historicos_conocidos(db):
-    # Hechos verificables de la historia de la F1 (sirven también de ground truth para el agente)
+def test_known_historical_facts(db):
+    # Verifiable F1 history (also serves as ground truth for the agent)
     assert db.execute("SELECT MIN(year) FROM races").fetchone()[0] == 1950
     champ = db.execute(
         "SELECT d.forename || ' ' || d.surname FROM driver_standings s JOIN drivers d USING(driver_id) "
@@ -54,21 +52,21 @@ def test_datos_historicos_conocidos(db):
     assert first == "Nino Farina"
 
 
-def test_posiciones_y_puntos_coherentes(db):
+def test_positions_and_points_are_consistent(db):
     assert db.execute("SELECT COUNT(*) FROM results WHERE points < 0").fetchone()[0] == 0
-    # toda carrera con resultados tiene ganador; solo 3 carreras históricas tuvieron victoria compartida
-    # (Francia 1951, Argentina 1956, Gran Bretaña 1957)
-    sin_ganador = db.execute(
+    # every race with results has a winner; only 3 historic races had a shared win
+    # (France 1951, Argentina 1956, Great Britain 1957)
+    no_winner = db.execute(
         "SELECT COUNT(*) FROM (SELECT race_id FROM results GROUP BY race_id "
         "HAVING SUM(position = 1) = 0)").fetchone()[0]
-    compartidas = db.execute(
+    shared = db.execute(
         "SELECT COUNT(*) FROM (SELECT race_id FROM results GROUP BY race_id "
         "HAVING SUM(position = 1) > 1)").fetchone()[0]
-    assert sin_ganador == 0
-    assert compartidas == 3
+    assert no_winner == 0
+    assert shared == 3
 
 
-def test_select_valido():
+def test_valid_select():
     res = execute_select("SELECT COUNT(*) AS n FROM drivers;")
     assert res.columns == ["n"] and res.rows[0][0] > 15
 
@@ -83,11 +81,11 @@ def test_select_valido():
     "ATTACH DATABASE 'x.db' AS x",
     "WITH t AS (SELECT 1) DELETE FROM drivers",
 ])
-def test_sql_peligroso_rechazado(sql):
+def test_dangerous_sql_is_rejected(sql):
     with pytest.raises(SQLNotAllowed):
         execute_select(sql)
 
 
-def test_tope_de_filas():
+def test_row_cap():
     res = execute_select("SELECT * FROM results", max_rows=10)
     assert len(res.rows) == 10 and res.truncated

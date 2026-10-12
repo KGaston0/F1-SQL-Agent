@@ -1,7 +1,7 @@
-"""Construye la base SQLite de Fórmula 1 a partir de datos históricos reales (API Jolpica-F1).
+"""Builds the Formula 1 SQLite database from real historical data (Jolpica-F1 API).
 
-Flujo: crear esquema -> descargar/leer caché de cada endpoint -> insertar en orden de dependencias
-(FKs respetadas) -> verificar integridad. Es idempotente: la BD se recrea desde cero en cada corrida.
+Flow: create schema -> download/read the cache of each endpoint -> insert in dependency order
+(foreign keys respected) -> verify integrity. Idempotent: the DB is rebuilt from scratch on every run.
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from pathlib import Path
 from src import config
 from src.database.jolpica import JolpicaClient
 
-FIRST_CONSTRUCTOR_CHAMPIONSHIP = 1958  # antes de ese año no existía el campeonato de constructores
+FIRST_CONSTRUCTOR_CHAMPIONSHIP = 1958  # the constructors' championship did not exist before this year
 
 
 def _int(value):
@@ -33,7 +33,7 @@ def _log(msg: str) -> None:
     print(msg, file=sys.stderr)
 
 
-# ----------------------------------------------------------------------------- tablas maestras
+# ----------------------------------------------------------------------------- reference tables
 def _load_seasons(db, client):
     rows = [(int(s["season"]), s.get("url"))
             for p in client.pages("seasons") for s in p["SeasonTable"]["Seasons"]]
@@ -86,9 +86,9 @@ def _load_races(db, client) -> dict[tuple[int, int], int]:
     return race_ids
 
 
-# ----------------------------------------------------------------------------- hechos
+# ----------------------------------------------------------------------------- facts
 class _StatusIds:
-    """Resuelve el texto de estado a status_id; crea estados que la tabla maestra no tuviera."""
+    """Maps a status text to its status_id; creates statuses missing from the reference table."""
 
     def __init__(self, db):
         self.db = db
@@ -126,8 +126,8 @@ def _load_results(db, client, race_ids, statuses):
                 " fastest_lap_rank, fastest_lap_number, fastest_lap_time)"
                 " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
             n += cur.rowcount
-    if n != total:  # control de completitud contra el total que informa la API
-        raise RuntimeError(f"results: se insertaron {n} filas pero la API informa {total}")
+    if n != total:  # completeness check against the total reported by the API
+        raise RuntimeError(f"results: inserted {n} rows but the API reports {total}")
     return n
 
 
@@ -185,9 +185,9 @@ def _load_standings(db, client, years):
     return n_d, n_c
 
 
-# ----------------------------------------------------------------------------- orquestación
+# ----------------------------------------------------------------------------- orchestration
 def build_database(db_path: Path | None = None, offline: bool = False, refresh: bool = False) -> dict[str, int]:
-    """Recrea la BD completa y devuelve el conteo de filas por tabla."""
+    """Rebuilds the whole DB and returns the row count per table."""
     db_path = Path(db_path or config.DB_PATH)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = db_path.with_suffix(".building")
@@ -197,7 +197,7 @@ def build_database(db_path: Path | None = None, offline: bool = False, refresh: 
     db = sqlite3.connect(tmp_path)
     try:
         db.executescript(config.SCHEMA_PATH.read_text(encoding="utf-8"))
-        _log("Tablas maestras...")
+        _log("Reference tables...")
         years = _load_seasons(db, client)
         _load_circuits(db, client)
         _load_drivers(db, client)
@@ -205,18 +205,18 @@ def build_database(db_path: Path | None = None, offline: bool = False, refresh: 
         _load_status(db, client)
         race_ids = _load_races(db, client)
         statuses = _StatusIds(db)
-        _log("Resultados de carreras...")
+        _log("Race results...")
         _load_results(db, client, race_ids, statuses)
-        _log("Clasificación...")
+        _log("Qualifying...")
         _load_qualifying(db, client, race_ids)
         _log("Sprints...")
         _load_sprints(db, client, race_ids, statuses)
-        _log("Campeonatos...")
+        _log("Standings...")
         _load_standings(db, client, years)
 
         violations = db.execute("PRAGMA foreign_key_check").fetchall()
         if violations:
-            raise RuntimeError(f"Violaciones de clave foránea: {violations[:5]}")
+            raise RuntimeError(f"Foreign key violations: {violations[:5]}")
         db.commit()
         counts = {t: db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for (t,) in db.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").fetchall()}
@@ -226,5 +226,5 @@ def build_database(db_path: Path | None = None, offline: bool = False, refresh: 
         tmp_path.unlink(missing_ok=True)
         raise
     db.close()
-    tmp_path.replace(db_path)  # solo reemplaza la BD vieja si la construcción terminó bien
+    tmp_path.replace(db_path)  # the old DB is only replaced if the build finished successfully
     return counts

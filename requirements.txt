@@ -1,8 +1,11 @@
-# Versiones a fijar al implementar (pip freeze)
-google-genai
-python-dotenv
-chromadb
-sentence-transformers
-pypdf
-streamlit
-pytest
+# Pinned versions (tested on Python 3.12)
+google-genai==2.29.0
+groq==1.7.0
+python-dotenv==1.2.4
+pytest==9.1.1
+
+# Planned for later stages – add and pin them when they are implemented:
+#   chromadb              (RAG vector store)
+#   sentence-transformers (local embeddings; pulls in PyTorch, ~2 GB)
+#   pypdf                 (PDF text extraction)
+#   streamlit             (chat UI)
