@@ -4,8 +4,8 @@ groq==1.7.0
 python-dotenv==1.2.4
 pytest==9.1.1
 
-# Planned for later stages – add and pin them when they are implemented:
-#   chromadb              (RAG vector store)
-#   sentence-transformers (local embeddings; pulls in PyTorch, ~2 GB)
-#   pypdf                 (PDF text extraction)
-#   streamlit             (chat UI)
+# PDF RAG (local index; the embedding model is downloaded on the first indexing run)
+chromadb==1.5.9
+sentence-transformers==6.1.0
+pypdf==6.19.0
+truststore==0.10.4

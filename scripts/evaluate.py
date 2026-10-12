@@ -47,22 +47,59 @@ def contains(answer_norm: str, token: str) -> bool:
     return re.search(rf"(?<![\w]){re.escape(token)}(?![\w])", answer_norm) is not None
 
 
+def tool_outputs(res, tool_name: str) -> list[dict]:
+    """Read the outputs recorded in the provider-neutral conversation history."""
+    outputs = []
+    for message in res.history:
+        if message.get("role") != "tool":
+            continue
+        for item in message.get("results", []):
+            if item["call"].name == tool_name:
+                outputs.append(item["output"])
+    return outputs
+
+
 def judge(case: dict, res) -> tuple[str, str]:
     """Returns (verdict, detail). Verdicts: PASS | FAIL | REVIEW."""
     ans = norm(res.answer)
     if res.status != "ok":
         return "FAIL", f"status {res.status}"
     if case.get("expect") == "refuse":
-        ran_sql = any(s.get("ok") for s in res.steps)
+        ran_sql = any(s.get("tool") == "query_sql" and s.get("ok") for s in res.steps)
         return ("FAIL", "ran SQL successfully") if ran_sql else ("REVIEW", "ran nothing; read the answer")
     if case.get("expect") == "review":
         return "REVIEW", "manual judgment"
     if "must_contain_any" in case:
         ok = any(contains(ans, norm(t)) for t in case["must_contain_any"])
         return ("PASS", "") if ok else ("FAIL", f"missing any of {case['must_contain_any']}")
-    tokens = case["_tokens"]
+    tokens = case.get("_tokens", [])
     missing = [t for t in tokens if not contains(ans, t)]
-    return ("PASS", "") if not missing else ("FAIL", f"missing {missing}")
+    if missing:
+        return "FAIL", f"missing {missing}"
+
+    if expected_source := case.get("expected_pdf_source"):
+        hits = [
+            hit
+            for output in tool_outputs(res, "search_documents")
+            for hit in output.get("results", [])
+            if hit.get("source") == expected_source
+        ]
+        if not hits:
+            return "FAIL", f"did not retrieve {expected_source}"
+        passages = norm(" ".join(hit.get("text", "") for hit in hits))
+        missing_terms = [term for term in case.get("expected_pdf_terms", [])
+                         if norm(term) not in passages]
+        if missing_terms:
+            return "FAIL", f"retrieved passages missing {missing_terms}"
+        citations = {
+            int(page)
+            for page in re.findall(
+                rf"\[{re.escape(expected_source)},\s*PDF p\.\s*(\d+)\]", res.answer, flags=re.I
+            )
+        }
+        if not citations.intersection({int(hit["page"]) for hit in hits}):
+            return "FAIL", "answer did not cite a retrieved source page"
+    return "PASS", ""
 
 
 def main() -> int:
@@ -80,7 +117,8 @@ def main() -> int:
 
     if args.check_truth:
         for c in cases:
-            print(f"{c['id']}  {c['question']}\n      truth: {c.get('_tokens', c.get('must_contain_any', c.get('expect')))}")
+            truth = c.get("_tokens", c.get("must_contain_any", c.get("expected_pdf_source", c.get("expect"))))
+            print(f"{c['id']}  {c['question']}\n      truth: {truth}")
         return 0
 
     from src.agent.agent import Agent  # late import: --check-truth does not need the API
@@ -94,11 +132,18 @@ def main() -> int:
             print(f"\nSTOP: {res.answer}\nResults so far are saved below; resume with the remaining ids.")
             break
         verdict, detail = judge(c, res)
-        sqls = [s["args"].get("sql", "") for s in res.steps]
+        sqls = [s["args"].get("sql", "") for s in res.steps if s.get("tool") == "query_sql"]
+        pdf_sources = sorted({
+            f"{hit['source']} p. {hit['page']}"
+            for output in tool_outputs(res, "search_documents")
+            for hit in output.get("results", [])
+            if hit.get("source") and hit.get("page")
+        })
         print(f"{c['id']:4} {verdict:7} {res.elapsed_s:5.1f}s  {c['question'][:60]}")
         rows.append((c, res, verdict, detail))
         results.append({"id": c["id"], "category": c["category"], "question": c["question"], "verdict": verdict,
-                        "detail": detail, "answer": res.answer, "sql": sqls, "elapsed_s": res.elapsed_s,
+                        "detail": detail, "answer": res.answer, "sql": sqls, "pdf_sources": pdf_sources,
+                        "elapsed_s": res.elapsed_s,
                         "tokens": res.tokens, "retries": sum(1 for s in res.steps if not s.get("ok"))})
 
     auto = [r for r in rows if r[2] in ("PASS", "FAIL")]
