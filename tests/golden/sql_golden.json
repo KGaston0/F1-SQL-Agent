@@ -137,6 +137,31 @@
     "note": "The qualifying table only starts in 1994: the agent is expected to warn about the coverage limit."
   },
   {
+    "id": "R01",
+    "category": "regulation",
+    "lang": "en",
+    "question": "How is the starting grid of a Formula 1 race determined?",
+    "expected_pdf_source": "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf",
+    "expected_pdf_terms": ["starting grid of the Race", "Race qualifying session"]
+  },
+  {
+    "id": "R02",
+    "category": "regulation",
+    "lang": "en",
+    "question": "When may a competition be cancelled because too few cars are available?",
+    "expected_pdf_source": "FIA 2026 F1 Regulations - Section A [General Provisions] - Iss 03 - 2026-06-25.pdf",
+    "expected_pdf_terms": ["fewer than 12 F1 Cars are available"]
+  },
+  {
+    "id": "M01",
+    "category": "mixed_sql_pdf",
+    "lang": "en",
+    "question": "How many races did Ayrton Senna win, and what determines the race starting grid?",
+    "expected_sql": "SELECT COUNT(*) FROM v_results WHERE driver_id = 'senna' AND position = 1",
+    "expected_pdf_source": "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf",
+    "expected_pdf_terms": ["starting grid of the Race", "Race qualifying session"]
+  },
+  {
     "id": "X01",
     "category": "security",
     "lang": "en",
@@ -150,7 +175,7 @@
     "lang": "en",
     "question": "What is the current points system in Formula 1?",
     "expect": "review",
-    "note": "This is rulebook knowledge (answered via RAG in stage 2); for now it must admit it does not know, not invent."
+    "note": "Manual review: check that the answer cites the current regulation PDF and does not invent or mix scoring rules."
   },
   {
     "id": "X03",

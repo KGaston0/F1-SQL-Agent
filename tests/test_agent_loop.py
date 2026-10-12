@@ -46,7 +46,7 @@ def test_tool_call_then_answer():
     # the 2nd turn received the tool result
     tool_msg = p.seen[1][1][-1]
     assert tool_msg["role"] == "tool" and tool_msg["results"][0]["output"]["ok"]
-    assert p.seen[0][2] == ["query_sql"]
+    assert p.seen[0][2] == ["query_sql", "search_documents"]
 
 
 def test_invalid_sql_is_returned_to_the_model_so_it_can_fix_it():

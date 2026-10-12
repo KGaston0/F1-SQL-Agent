@@ -1,4 +1,4 @@
-"""Tools the LLM can call (provider-independent). For now: query_sql."""
+"""Tools the LLM can call (provider-independent): SQL and PDF retrieval."""
 from __future__ import annotations
 
 import re
@@ -23,7 +23,24 @@ QUERY_SQL = ToolSpec(
     },
 )
 
-TOOLS = [QUERY_SQL]
+SEARCH_DOCUMENTS = ToolSpec(
+    name="search_documents",
+    description=(
+        "Searches the local Formula 1 regulation PDFs for relevant passages. "
+        "Use it for sporting, technical, or general regulation questions. "
+        "Every result includes the source filename and PDF page for citation."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "A focused question or search phrase."},
+            "top_k": {"type": "integer", "description": "Number of passages to return (1-4; default 2)."},
+        },
+        "required": ["query"],
+    },
+)
+
+TOOLS = [QUERY_SQL, SEARCH_DOCUMENTS]
 
 # Tables with partial coverage: if a query touches one, the tool adds the warning itself
 # (it does not depend on the LLM remembering), so a "low" total is never presented as the full history.
@@ -64,9 +81,24 @@ def query_sql(sql: str = "", **_ignored) -> dict[str, Any]:
     return out
 
 
+def search_documents(query: str = "", top_k: int = 2, **_ignored) -> dict[str, Any]:
+    """Search indexed PDFs without loading RAG packages until the tool is needed."""
+    started = time.perf_counter()
+    if not query.strip():
+        return {"ok": False, "error": "Missing 'query' argument.", "ms": _ms(started)}
+    try:
+        from src.rag.retrieval import search_documents as retrieve
+
+        out = retrieve(query, top_k=top_k)
+    except (ImportError, FileNotFoundError, RuntimeError, ValueError) as error:
+        out = {"ok": False, "error": str(error), "results": []}
+    out["ms"] = _ms(started)
+    return out
+
+
 def _ms(started: float) -> int:
     return round((time.perf_counter() - started) * 1000)
 
 
 # name -> function registry (the agent dispatches by name)
-REGISTRY = {"query_sql": query_sql}
+REGISTRY = {"query_sql": query_sql, "search_documents": search_documents}

@@ -86,13 +86,14 @@ class Agent:
     def _run_tool(self, call: ToolCall, step: int, result: AgentResult) -> dict[str, Any]:
         fn = REGISTRY.get(call.name)
         out = fn(**call.args) if fn else {"ok": False, "error": f"Unknown tool: {call.name}"}
-        sql = " ".join(str(call.args.get("sql", "")).split())
+        detail = " ".join(str(call.args.get("sql") or call.args.get("query") or "").split())
+        row_count = out.get("row_count", len(out.get("results", [])))
         result.steps.append({
             "step": step, "tool": call.name, "args": call.args, "ok": out.get("ok"),
-            "row_count": out.get("row_count"), "error": out.get("error"), "ms": out.get("ms"),
+            "row_count": row_count, "error": out.get("error"), "ms": out.get("ms"),
         })
         if out.get("ok"):
-            log.info("  [%d] %s -> %s rows (%s ms) | %s", step, call.name, out.get("row_count"), out.get("ms"), sql)
+            log.info("  [%d] %s -> %s results (%s ms) | %s", step, call.name, row_count, out.get("ms"), detail)
         else:
-            log.warning("  [%d] %s ERROR: %s | %s", step, call.name, out.get("error"), sql)
+            log.warning("  [%d] %s ERROR: %s | %s", step, call.name, out.get("error"), detail)
         return out
