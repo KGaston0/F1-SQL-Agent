@@ -219,10 +219,16 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Proyecto: artefactos regenerables
+# Project: regenerable artifacts
 data/vectorstore/*
 !data/vectorstore/.gitkeep
-# Cache de la API (regenerable con scripts/init_db.py)
+# API cache (regenerable with scripts/init_db.py)
 data/raw/
 .venv/
 *.building
+
+# Agent logs (regenerable)
+data/logs/
+
+# Personal notes (defense script, dev log): not pushed to the repo
+private/
