@@ -7,6 +7,7 @@ Every question leaves one JSON line in LOG_PATH (see src/agent/logging_utils.py)
 from __future__ import annotations
 
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -18,6 +19,23 @@ from src.agent.prompts import build_system_prompt
 from src.agent.tools import REGISTRY, TOOLS
 
 log = logging.getLogger("agent")
+
+_INVISIBLE = re.compile("[\u200b\u200c\u200d\u200e\u200f\u2060\ufeff]")      # zero-width characters
+_CJK_OPEN_BRACKET = re.compile("\u3010\\s*\\[?")     # 【 or 【[  ->  [
+_CJK_CLOSE_BRACKET = re.compile("\\]?\\s*\u3011")    # 】 or ]】  ->  ]
+_ODD_SPACES = re.compile("[\u00a0\u2000-\u200a\u202f\u205f\u3000]")            # non-breaking / thin / wide spaces
+
+
+def tidy_text(text: str) -> str:
+    """Undo typographic artifacts some LLMs add (zero-width chars, narrow no-break spaces, non-breaking hyphens).
+
+    They look identical on screen but break exact matching of file names in citations. Only whitespace, invisible
+    characters, the non-breaking hyphen and CJK brackets are touched; accents and real punctuation are kept.
+    """
+    text = _ODD_SPACES.sub(" ", _INVISIBLE.sub("", text)).replace("\u2011", "-")
+    # some models wrap citations in CJK brackets: 【[file.pdf, PDF p. 3]】 or 【file.pdf, PDF p. 3】 -> [file.pdf, PDF p. 3]
+    text = _CJK_OPEN_BRACKET.sub("[", text)
+    return _CJK_CLOSE_BRACKET.sub("]", text)
 
 
 @dataclass
@@ -54,8 +72,8 @@ class Agent:
                     tokens[k] = tokens.get(k, 0) + (v or 0)
 
                 if not turn.tool_calls:
-                    result.answer = turn.text
-                    messages.append({"role": "assistant", "content": turn.text})
+                    result.answer = tidy_text(turn.text)
+                    messages.append({"role": "assistant", "content": result.answer})
                     break
 
                 messages.append({"role": "assistant", "content": turn.text, "tool_calls": turn.tool_calls,

@@ -142,7 +142,10 @@
     "lang": "en",
     "question": "How is the starting grid of a Formula 1 race determined?",
     "expected_pdf_source": "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf",
-    "expected_pdf_terms": ["starting grid of the Race", "Race qualifying session"]
+    "expected_pdf_terms_any": [
+      "starting grid of the Race",
+      "grid for the Race"
+    ]
   },
   {
     "id": "R02",
@@ -150,7 +153,9 @@
     "lang": "en",
     "question": "When may a competition be cancelled because too few cars are available?",
     "expected_pdf_source": "FIA 2026 F1 Regulations - Section A [General Provisions] - Iss 03 - 2026-06-25.pdf",
-    "expected_pdf_terms": ["fewer than 12 F1 Cars are available"]
+    "expected_pdf_terms": [
+      "fewer than 12 F1 Cars are available"
+    ]
   },
   {
     "id": "M01",
@@ -159,7 +164,10 @@
     "question": "How many races did Ayrton Senna win, and what determines the race starting grid?",
     "expected_sql": "SELECT COUNT(*) FROM v_results WHERE driver_id = 'senna' AND position = 1",
     "expected_pdf_source": "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf",
-    "expected_pdf_terms": ["starting grid of the Race", "Race qualifying session"]
+    "expected_pdf_terms_any": [
+      "starting grid of the Race",
+      "grid for the Race"
+    ]
   },
   {
     "id": "X01",

@@ -13,7 +13,7 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 from src import config
-from src.rag.documents import extract_pdf_chunks, file_sha256
+from src.rag.documents import extract_pdf_chunks, file_sha256, index_signature
 from src.rag.retrieval import COLLECTION_NAME
 
 
@@ -52,10 +52,13 @@ def index_pdfs(pdf_dir: Path | None = None, rebuild: bool = False) -> dict[str, 
     skipped: list[str] = []
     current_sources = {path.name for path in paths}
 
+    signature = index_signature()
     for path in paths:
         source_hash = file_sha256(path)
         previous = existing_by_source.get(path.name, [])
-        if previous and all(item.get("source_hash") == source_hash for item in previous):
+        # unchanged only if both the file and the embedding/chunk settings are the same as when it was indexed
+        if previous and all(item.get("source_hash") == source_hash and item.get("index_config") == signature
+                            for item in previous):
             skipped.append(path.name)
             continue
 
@@ -73,7 +76,8 @@ def index_pdfs(pdf_dir: Path | None = None, rebuild: bool = False) -> dict[str, 
         ids = [_chunk_id(path.name, page, index, text)
                for page, index, text in page_chunks]
         metadatas = [
-            {"source": path.name, "page": page, "chunk": index, "source_hash": source_hash}
+            {"source": path.name, "page": page, "chunk": index, "source_hash": source_hash,
+             "index_config": signature}
             for page, index, _ in page_chunks
         ]
 
