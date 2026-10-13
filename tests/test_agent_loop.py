@@ -131,3 +131,19 @@ def test_translation_to_groq_and_gemini_formats():
     assert [x.role for x in c] == ["user", "model", "user"]
     assert c[1].parts[0].function_call.name == "query_sql"
     assert c[2].parts[0].function_response.response["ok"] is True
+
+
+def test_final_answer_is_cleaned_of_invisible_typography():
+    """gpt-oss sometimes writes narrow no-break spaces / zero-width chars / non-breaking hyphens inside citations."""
+    dirty = "Grid by qualifying \u202f[\u200bFile\u202fA - 2026\u201110\u201101.pdf, PDF\u202fp.\u202f25]. Caf\u00e9 \u2013 ok"
+    res = Agent(provider=ScriptedProvider([LLMTurn(text=dirty)])).ask("grid?")
+    assert "[File A - 2026-10-01.pdf, PDF p. 25]" in res.answer
+    assert "\u00e9" in res.answer and "\u2013" in res.answer  # accents and real punctuation are preserved
+    assert not any(ch in res.answer for ch in ("\u200b", "\u202f", "\u2011"))
+
+
+def test_cjk_brackets_around_citations_become_square_brackets():
+    for dirty in ("Rule \u3010[File A.pdf, PDF p. 3]\u3011.", "Rule \u3010File A.pdf, PDF p. 3\u3011.",
+                  "Rule \u3010 [File A.pdf, PDF p. 3] \u3011."):
+        res = Agent(provider=ScriptedProvider([LLMTurn(text=dirty)])).ask("rule?")
+        assert res.answer.replace("Rule [", "Rule [").strip() == "Rule [File A.pdf, PDF p. 3]."

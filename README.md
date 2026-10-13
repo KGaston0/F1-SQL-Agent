@@ -4,7 +4,7 @@ An assistant that answers natural-language questions (English or Spanish) about 
 It combines *text-to-SQL* over a SQLite database with **real data from 1950 to today** and RAG over local PDF
 regulations. The LLM decides which source to query through *function calling*.
 
-> **Status (2026-10-12):** database ✅ · SQL agent ✅ · PDF RAG ✅ ·  report ⏳
+> **Status (2026-10-12):** database ✅ · SQL agent ✅ · PDF RAG ✅ · Streamlit UI ⏳ · report ⏳
 
 ## Quick start
 ```
@@ -18,8 +18,9 @@ python scripts/ask.py --provider groq --list-models
 python scripts/ask.py --provider groq --choose-model
 python scripts/ask.py --provider groq --model openai/gpt-oss-120b "How are points awarded by finishing position?"
 ```
-The first indexing run downloads the configured embedding model. Add regulation PDFs to `data/pdfs` and run the
-indexing command again when documents change. The vector index is local and ignored by Git; each clone must build it.
+The first indexing run downloads the embedding model (`BAAI/bge-small-en-v1.5`). Add regulation PDFs to `data/pdfs` and run the
+indexing command again when documents change (after changing `EMBEDDING_MODEL` use `--rebuild`). The vector index is local and
+ignored by Git; each clone must build it.
 The database ships prebuilt in `data/db/f1.db`. To rebuild it from scratch: `python scripts/init_db.py`
 (downloads the data from a public API; ~40 min the first time because of the API rate limit).
 
@@ -44,8 +45,8 @@ python scripts/evaluate.py R01 R02 M01    # three PDF and mixed SQL + PDF cases;
 See [testing and manual examples](docs/testing.md) for model selection, smoke-test questions, and expected checks.
 
 ## Layout
-- `src/database/` schema, data loading and read-only access · `src/agent/` agent loop, prompt, tools and LLM providers
-- `scripts/` `ask.py`, `init_db.py`, `evaluate.py` · `tests/` tests and *golden set* · `data/` database and PDFs
+- `src/database/` schema, data loading and read-only access · `src/agent/` agent loop, prompt, tools and LLM providers · `src/rag/` PDF indexing and retrieval
+- `scripts/` `ask.py`, `index_pdfs.py`, `init_db.py`, `evaluate.py` · `tests/` tests and *golden set* · `data/` database, PDFs and local index
 - `docs/` [data-model](docs/data-model.md) · [architecture](docs/architecture.md) · [testing](docs/testing.md) ·
   [evidence](docs/evidence/) · [report](docs/report/report.md) (in Spanish, as required)
 
@@ -54,7 +55,7 @@ Working on this repo as a team? Read [AGENTS.md](AGENTS.md) (conventions, decisi
 ## Assignment requirements
 - [x] Relational database with ≥5 tables and >15 rows per table (11 tables, the smallest has 77 rows)
 - [x] Answers natural-language questions using the database (19/19 in the automatic evaluation)
-- [x] RAG over ≥2 PDFs (FIA 2026 Sections A/B/C and 2027 Section C)
+- [x] RAG over ≥2 PDFs (FIA 2026 Sections A/B/C and 2027 Section C; PDF and mixed golden cases R01, R02, M01 pass)
 - [ ] Graphical interface (the only promotion item chosen)
 - [ ] Report of up to 10 pages
 

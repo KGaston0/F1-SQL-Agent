@@ -8,6 +8,7 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 from src import config
+from src.rag.documents import format_citation, index_signature
 
 COLLECTION_NAME = "f1_regulations"
 MAX_TOP_K = 4
@@ -21,6 +22,14 @@ def _collection():
         name=COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"},
     )
+
+
+@lru_cache(maxsize=1)
+def _index_matches_settings() -> tuple[bool, str]:
+    """Compare the settings stored in the index with the current ones (vectors from different models are not comparable)."""
+    sample = _collection().get(limit=1, include=["metadatas"])["metadatas"]
+    built_with = (sample[0] or {}).get("index_config", "unknown") if sample else "unknown"
+    return built_with == index_signature(), built_with
 
 
 @lru_cache(maxsize=1)
@@ -44,6 +53,15 @@ def search_documents(query: str, top_k: int = 2) -> dict[str, Any]:
             "results": [],
         }
 
+    matches, built_with = _index_matches_settings()
+    if not matches:
+        return {
+            "ok": False,
+            "error": (f"The PDF index was built with '{built_with}' but the current settings are "
+                      f"'{index_signature()}'. Run `python scripts/index_pdfs.py --rebuild`."),
+            "results": [],
+        }
+
     model = _embedding_model()
     encode_query = getattr(model, "encode_query", model.encode)
     embedding = encode_query(query, normalize_embeddings=True).tolist()
@@ -61,6 +79,7 @@ def search_documents(query: str, top_k: int = 2) -> dict[str, Any]:
             "text": text,
             "source": metadata["source"],
             "page": metadata["page"],
+            "citation": format_citation(metadata["source"], metadata["page"]),
             "similarity": round(1 - distance, 3),
         }
         for text, metadata, distance in zip(documents, metadatas, distances)

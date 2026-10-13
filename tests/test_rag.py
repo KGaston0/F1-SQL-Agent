@@ -50,3 +50,35 @@ def test_prompt_routes_regulations_to_pdf_search() -> None:
 
     assert "search_documents" in prompt
     assert "[filename, PDF p. N]" in prompt
+
+
+def test_prompt_makes_pdf_queries_english() -> None:
+    """Retrieval is weak across languages (English PDFs), so the LLM must query in English."""
+    from src.agent.prompts import build_system_prompt
+
+    prompt = build_system_prompt()
+
+    assert "always write" in prompt and "`query` in English" in prompt
+
+
+def test_retrieval_citation_is_ready_to_copy() -> None:
+    """The tool hands the LLM the exact citation string, so the format cannot drift."""
+    from src.rag.documents import format_citation
+
+    assert format_citation("FIA 2026 - Section B.pdf", 22) == "[FIA 2026 - Section B.pdf, PDF p. 22]"
+    from src.agent.prompts import build_system_prompt
+
+    assert "`citation` field" in build_system_prompt()
+
+
+def test_index_signature_changes_with_the_embedding_model(monkeypatch) -> None:
+    """Vectors from different models are not comparable: the signature must reveal a mismatch."""
+    from src import config
+    from src.rag.documents import CHUNK_OVERLAP_WORDS, CHUNK_WORDS, index_signature
+
+    monkeypatch.setattr(config, "EMBEDDING_MODEL", "model-a")
+    first = index_signature()
+    monkeypatch.setattr(config, "EMBEDDING_MODEL", "model-b")
+
+    assert first != index_signature()
+    assert f"{CHUNK_WORDS}/{CHUNK_OVERLAP_WORDS}" in first

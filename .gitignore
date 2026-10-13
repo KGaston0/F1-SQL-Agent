@@ -232,3 +232,6 @@ data/logs/
 
 # Personal notes (defense script, dev log): not pushed to the repo
 private/
+
+# IDE settings (JetBrains): personal, do not commit
+.idea/

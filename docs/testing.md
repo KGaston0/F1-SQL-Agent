@@ -1,13 +1,13 @@
 # Tests and results
 
-## 1. Automatic tests (`pytest`, 41)
+## 1. Automatic tests (`pytest`, 46)
 They use no internet and no API; they take ~1 s.
 | File | What it verifies | Tests |
 |---|---|---|
 | `tests/test_db.py` | ≥5 tables and >15 rows per table, no FK violations, known historical facts (Hamilton 2008 champion, Senna 41 wins), rejection of dangerous SQL, row cap | 15 |
 | `tests/test_agent_tools.py` | the prompt includes the schema, the 6 few-shot examples run and return correct data, the `query_sql` tool, the `coverage_note`, the JSONL log | 12 |
-| `tests/test_agent_loop.py` | the loop with a fake LLM: tool call → answer, fixing failing SQL, dangerous SQL, step limit, exhausted quota, errors, multi-turn, retries, translation to the Gemini and Groq formats | 10 |
-| `tests/test_rag.py` | overlapping PDF chunks, tool registration and source/page metadata, prompt routing | 4 |
+| `tests/test_agent_loop.py` | the loop with a fake LLM: tool call → answer, fixing failing SQL, dangerous SQL, step limit, exhausted quota, errors, multi-turn, retries, translation to the Gemini and Groq formats, cleaning of invisible characters and CJK brackets in answers | 12 |
+| `tests/test_rag.py` | overlapping PDF chunks, tool registration and source/page metadata, prompt routing, English-query rule, ready-made citations, index-settings guard | 7 |
 
 ## 2. Evaluation against the real LLM (`python scripts/evaluate.py`)
 25 cases in `tests/golden/sql_golden.json`. **SQL expected answers are not hand-written:** they are computed by running `expected_sql` on the
@@ -34,8 +34,8 @@ Evidence: [`evidence/eval_groq_gpt-oss-120b.md`](evidence/eval_groq_gpt-oss-120b
 
 - **Ambiguous S18:** it listed the Schumachers with their wins (Michael 91, Ralf 6, Mick 0) instead of guessing one.
 - **Coverage S19:** it answered with the available data and added the warning that `qualifying` only starts in 1994, so the number is partial.
-- **X01 (delete the drivers table):** refused, no SQL executed. **X02 (current points system):** this result predates PDF RAG;
-  the new regulation cases R01/R02/M01 check PDF retrieval and citations. **X03 (best driver):** declined, since it is subjective.
+- **X01 (delete the drivers table):** refused, no SQL executed. **X02 (current points system):** this result predates PDF RAG; with RAG the same
+  question is answered from Article A2.2.1 with a citation (see section 4), and the regulation cases R01/R02/M01 check retrieval and citations. **X03 (best driver):** declined, since it is subjective.
 - Cost: 4,600–7,400 tokens per SQL question; 1–45 s each (Groq's 8,000 tokens/min limit causes the waits).
 - The run was split in three batches (S01–S19, X01–X02, X03) because Groq's daily token cap was reached.
 
@@ -53,7 +53,7 @@ Evidence: [`evidence/eval_groq_gpt-oss-120b.md`](evidence/eval_groq_gpt-oss-120b
 ## 4. PDF RAG checks
 
 Build the local index with `python scripts/index_pdfs.py`. It processes every PDF in `data/pdfs`, keeps the source
-filename and one-based PDF page on each chunk, and skips documents whose content has not changed. The generated
+filename and one-based PDF page on each chunk, and skips documents whose content and index settings have not changed. The generated
 index is stored under the ignored `data/vectorstore/` directory. Run `python scripts/index_pdfs.py --rebuild` to
 recreate the collection from scratch without touching the directory's tracked placeholder.
 
@@ -66,7 +66,27 @@ page returned by retrieval:
 | PDF only | "What does the 2026 sporting regulation say about a race suspension?" |
 | SQL + PDF | "How many races did Senna win, and what do the regulations say about the starting grid?" |
 
-The three new RAG cases have not been run against the real LLM; that uses provider API quota.
+### Results of the PDF and mixed cases (Groq, `openai/gpt-oss-120b`, 2026-10-12)
+Evidence: [`evidence/eval_groq_gpt-oss-120b_rag.md`](evidence/eval_groq_gpt-oss-120b_rag.md) (+ `.json`).
+
+| Case | Result |
+|---|---|
+| R01 – how the starting grid is determined | **PASS** (retrieves Section B, cites the page) |
+| R02 – when a competition can be cancelled (fewer than 12 cars) | **PASS** (Section A, page 12) |
+| M01 – Senna's wins (SQL) + what determines the grid (PDF) | **PASS** (41 wins + cited regulation) |
+
+A Spanish question also works end to end: *"¿Cómo se asignan los puntos por posición de llegada en una carrera?"* is answered in Spanish with
+the real points table of Article A2.2.1 (25-18-15-12-10-8-6-4-2-1 when ≥75 % of the distance is completed), citing Section A, pages 9–10.
+The agent translates the search query to English internally because the PDFs are in English.
+
+**How the 3/3 was reached (first attempts scored 0/3, then 1/3, 2/3):**
+1. *Citations:* the model abbreviated or reformatted file names. The retrieval tool now returns a ready-made `citation` string and the prompt requires copying it.
+2. *Invisible characters:* `gpt-oss` inserts narrow no-break spaces, zero-width characters, non-breaking hyphens and CJK brackets `【 】` inside citations,
+   which break exact matching. The agent cleans them from the final answer (`tidy_text`).
+3. *Search quality:* the original embedding model found the right document but not the key article. See the benchmark below; the model and the
+   chunk size were changed, and the prompt now asks for short English queries.
+4. *Test expectation:* R01/M01 required one specific sentence (page 22); the grid rule is stated in two articles (B2.4.1 on page 22 and B2.5.4 on page 25),
+   so either is now accepted (`expected_pdf_terms_any`).
 
 ## 5. Choose a model and run manual checks
 
@@ -106,3 +126,25 @@ available to the account. If that happens, wait for the quota window to clear an
 different model whose account limit permits the request. A different model does not automatically mean a higher quota.
 
 Still missing: UI screenshots.
+
+## 6. Retrieval benchmark (offline, no LLM)
+To choose the embedding model and the chunk size without spending API quota, 11 search queries (5 about the starting grid, 3 about cancelling a
+competition for lack of cars, 3 about the points system) were run against the real PDFs. A query is a *hit* if one of the top-3 chunks contains the
+sentence that answers it. The scripts live outside the repo (personal scratch space); the numbers are reproducible with the same approach.
+
+| Embedding model (chunks of 220 words) | Hits |
+|---|---|
+| `paraphrase-multilingual-MiniLM-L12-v2` (the first choice) | 6/11 |
+| `sentence-transformers/all-MiniLM-L6-v2` (used in the course demo) | 4/11 |
+| `BAAI/bge-small-en-v1.5` | 7/11 |
+| `BAAI/bge-base-en-v1.5` (larger) | 4/11 |
+
+| Chunk size / overlap | multilingual model | `bge-small-en-v1.5` |
+|---|---|---|
+| 220 / 40 words | 6/11 | 7/11 |
+| **120 / 30 words** | 6/11 | **10/11** |
+| 80 / 20 words | 6/11 | 8/11 |
+
+Keyword search (TF-IDF) alone scored 6/11 and the **hybrid** (semantic + TF-IDF, rank fusion) 5/11, so it was not adopted.
+Chosen: `BAAI/bge-small-en-v1.5` with 120-word chunks (3,422 chunks).
+**Caveat:** only 11 queries on 3 topics, and the same topics guided the tuning; it is a strong indication, not a proof.

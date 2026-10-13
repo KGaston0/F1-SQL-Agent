@@ -47,6 +47,15 @@ def contains(answer_norm: str, token: str) -> bool:
     return re.search(rf"(?<![\w]){re.escape(token)}(?![\w])", answer_norm) is not None
 
 
+_INVISIBLE = dict.fromkeys(map(ord, "​‌‍‎‏⁠﻿"), None)
+_DASHES = dict.fromkeys(map(ord, "‐‑‒–—−"), "-")
+
+
+def clean_typography(text: str) -> str:
+    """LLMs sometimes insert zero-width characters or typographic hyphens when copying text; undo that."""
+    return text.translate(_INVISIBLE).translate(_DASHES)
+
+
 def tool_outputs(res, tool_name: str) -> list[dict]:
     """Read the outputs recorded in the provider-neutral conversation history."""
     outputs = []
@@ -91,10 +100,14 @@ def judge(case: dict, res) -> tuple[str, str]:
                          if norm(term) not in passages]
         if missing_terms:
             return "FAIL", f"retrieved passages missing {missing_terms}"
+        # alternatives: several articles can legitimately answer the question, so any one term is enough
+        any_terms = case.get("expected_pdf_terms_any", [])
+        if any_terms and not any(norm(term) in passages for term in any_terms):
+            return "FAIL", f"retrieved passages contain none of {any_terms}"
         citations = {
             int(page)
             for page in re.findall(
-                rf"\[{re.escape(expected_source)},\s*PDF p\.\s*(\d+)\]", res.answer, flags=re.I
+                rf"\[{re.escape(expected_source)},\s*PDF p\.\s*(\d+)\]", clean_typography(res.answer), flags=re.I
             )
         }
         if not citations.intersection({int(hit["page"]) for hit in hits}):

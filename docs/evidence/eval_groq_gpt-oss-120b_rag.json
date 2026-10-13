@@ -1,0 +1,67 @@
+[
+  {
+    "id": "R01",
+    "category": "regulation",
+    "question": "How is the starting grid of a Formula 1 race determined?",
+    "verdict": "PASS",
+    "detail": "",
+    "answer": "The starting grid for a Formula 1 race is set primarily from the drivers’ qualifying results.  \n\n1. **Qualifying classification** – Each driver’s provisional grid slot is the position they earned in the qualifying session.  \n\n2. **Unserved grid penalties** – If a driver has unserved grid-penalty points (up to 15 cumulative points from the previous 12 months), that driver’s temporary grid position is calculated as:  \n\n   *temporary position = qualifying classification + sum of unserved grid penalties*[FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf, PDF p. 21].  \n\n   When two or more drivers end up with the same temporary position, the driver with the slower qualifying time keeps the shared slot and the others are moved forward accordingly[FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf, PDF p. 21].  \n\n3. **If qualifying cannot be held** – The grid is formed from the Drivers’ Championship standings instead of qualifying results[FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf, PDF p. 25].  \n\n4. **Fallback** – When neither qualifying nor championship-based methods can be applied, the stewards have sole discretion to decide the grid formation[FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf, PDF p. 25].",
+    "sql": [],
+    "pdf_sources": [
+      "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf p. 21",
+      "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf p. 25",
+      "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf p. 38"
+    ],
+    "elapsed_s": 44.55,
+    "tokens": {
+      "prompt": 9190,
+      "output": 659,
+      "thoughts": 0
+    },
+    "retries": 0
+  },
+  {
+    "id": "R02",
+    "category": "regulation",
+    "question": "When may a competition be cancelled because too few cars are available?",
+    "verdict": "PASS",
+    "detail": "",
+    "answer": "A competition can be postponed or cancelled when fewer than 12 F1 cars are available for it. [FIA 2026 F1 Regulations - Section A [General Provisions] - Iss 03 - 2026-06-25.pdf, PDF p. 12]",
+    "sql": [],
+    "pdf_sources": [
+      "FIA 2026 F1 Regulations - Section A [General Provisions] - Iss 03 - 2026-06-25.pdf p. 12",
+      "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf p. 19",
+      "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf p. 22",
+      "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf p. 26"
+    ],
+    "elapsed_s": 57.18,
+    "tokens": {
+      "prompt": 5901,
+      "output": 189,
+      "thoughts": 0
+    },
+    "retries": 0
+  },
+  {
+    "id": "M01",
+    "category": "mixed_sql_pdf",
+    "question": "How many races did Ayrton Senna win, and what determines the race starting grid?",
+    "verdict": "PASS",
+    "detail": "",
+    "answer": "Ayrton Senna won **41 Grand Prix** in his career.\n\nThe starting grid for a race is set primarily from the drivers’ **qualifying classification**. After qualifying, any unserved grid penalties are added to each driver’s qualifying position, and the grid is then closed-up to remove any vacant slots caused by withdrawals. If qualifying results cannot be used, the stewards may determine the grid order at their discretion[FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf, PDF p. 25].",
+    "sql": [
+      "SELECT COUNT(*) AS wins FROM v_results WHERE driver_id = 'senna' AND position = 1"
+    ],
+    "pdf_sources": [
+      "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf p. 25",
+      "FIA 2026 F1 Regulations - Section B [Sporting] - Iss 09 - 2026-10-01.pdf p. 34"
+    ],
+    "elapsed_s": 66.01,
+    "tokens": {
+      "prompt": 8259,
+      "output": 396,
+      "thoughts": 0
+    },
+    "retries": 0
+  }
+]
