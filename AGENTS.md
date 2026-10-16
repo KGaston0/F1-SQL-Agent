@@ -90,10 +90,3 @@ Groq's daily tokens – coordinate before running it and prefer subsets by id. O
 - Run `pytest` before pushing. If you touch the agent, prompt or tools, also run a relevant subset of `evaluate.py`.
 - Avoid editing the same file from two branches at once; the split below keeps areas separate.
 
-## Status and pending work
-Done: database, SQL agent, provider layer, golden-set evaluation (SQL 19/19, PDF/mixed R01+R02+M01 3/3), PDF RAG (indexing, `search_documents`, tests, retrieval benchmark).
-| Area | Files | Notes |
-|---|---|---|
-| RAG robustness | `tests/golden/`, `docs/testing.md` | Optional: more `R*`/`M*` cases (rules about safety car, penalties, technical limits) and a check of 2026 vs 2027 mixing (both Section C files are indexed) |
-| UI | `src/ui/app.py` | Streamlit chat; show the executed SQL and PDF sources per answer; reuse `Agent.ask(..., history=...)` |
-| Report & polish | `docs/report/`, screenshots | Report ≤ 10 pages, Spanish; use `docs/evidence/` and `private/` notes as raw material |
