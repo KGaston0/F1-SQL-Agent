@@ -4,7 +4,7 @@ An assistant that answers natural-language questions (English or Spanish) about 
 It combines *text-to-SQL* over a SQLite database with **real data from 1950 to today** and RAG over local PDF
 regulations. The LLM decides which source to query through *function calling*.
 
-> **Status (2026-10-12):** database ✅ · SQL agent ✅ · PDF RAG ✅ · Streamlit UI ⏳ · report ⏳
+> **Status (2026-10-12):** database ✅ · SQL agent ✅ · PDF RAG ✅ · report ✅
 
 ## Quick start
 ```
@@ -51,11 +51,5 @@ See [testing and manual examples](docs/testing.md) for model selection, smoke-te
   [evidence](docs/evidence/) · [report](docs/report/report.md) (in Spanish, as required)
 
 Working on this repo as a team? Read [AGENTS.md](AGENTS.md) (conventions, decisions, git workflow, pending work split).
-
-## Assignment requirements
-- [x] Relational database with ≥5 tables and >15 rows per table (11 tables, the smallest has 77 rows)
-- [x] Answers natural-language questions using the database (19/19 in the automatic evaluation)
-- [x] RAG over ≥2 PDFs (FIA 2026 Sections A/B/C and 2027 Section C; PDF and mixed golden cases R01, R02, M01 pass)
-- [x] Report of up to 10 pages
 
 Due: 2026-10-16 23:59.
