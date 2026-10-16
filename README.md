@@ -56,7 +56,6 @@ Working on this repo as a team? Read [AGENTS.md](AGENTS.md) (conventions, decisi
 - [x] Relational database with ≥5 tables and >15 rows per table (11 tables, the smallest has 77 rows)
 - [x] Answers natural-language questions using the database (19/19 in the automatic evaluation)
 - [x] RAG over ≥2 PDFs (FIA 2026 Sections A/B/C and 2027 Section C; PDF and mixed golden cases R01, R02, M01 pass)
-- [ ] Graphical interface (the only promotion item chosen)
-- [ ] Report of up to 10 pages
+- [x] Report of up to 10 pages
 
 Due: 2026-10-16 23:59.
